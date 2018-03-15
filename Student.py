@@ -32,6 +32,6 @@ class Student:
             self.area = "Law"
 
     def __str__(self):
-        return self.full_name + ", " + str(self.local)
+        return self.full_name + ", " + self.area + ", " + self.state
     def __repr__(self):
-        return self.full_name + ", " + str(self.local)
+        return self.full_name + ", " + self.area + ", " + self.state

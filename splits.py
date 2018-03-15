@@ -64,6 +64,8 @@ class MainApp:
         csv_file_path = askopenfilename(filetypes = (("CSV File","*.csv"),
                                                  ("All Files","*.*")))
         #print(csv_file_path)
+        if csv_file_path == "":
+            return
         self.v.set(csv_file_path)
         with open(csv_file_path, 'r') as csvfile:
             reader = csv.reader(csvfile)
@@ -93,9 +95,6 @@ class MainApp:
             self.split_box.insert(tk.END,'Error: minimum must be less than maximum')
             return
 
-        
-        self.split_box.delete('1.0',tk.END)
-        self.split_box.insert(tk.END,'Split!')
 
         buddies = []
         ## Pair up any people from the same hometown first ##
@@ -144,13 +143,44 @@ class MainApp:
                 partners.add_student(self.students.pop(0))
             buddies.append(partners)
 
-        buddies.sort(key=lambda x: (x.local, x.area))
+        buddies.sort(key=lambda x: (x.local, x.area), reverse=True)
         # with list sorted in the order it is in
         # pop first element, add/pop elements until group size is > minimum
         # then finalize group, continue until running out
         # if a group is leftover, combine with smallest group
+        final_groups = []
+        leftover = None
 
-        print(buddies)
+        while buddies:
+            group = buddies.pop(0)
+            while group.size < self.minv.get():
+                if buddies:
+                    new_group = buddies.pop(0)
+                    group.combine_group(new_group)
+                # still need to do something with leftovers here
+                else:
+                    leftover = group
+                    break
+            if leftover is None:        
+                final_groups.append(group)
+        final_groups.sort(key=lambda x: x.size)
+        if (leftover is not None) and leftover.size < (.75 * self.minv.get()):
+            final_groups[0].combine_group(leftover)
+        elif (leftover is not None) and leftover.size >= (.75 * self.minv.get()):
+            final_groups.append(leftover)
+        final_groups.sort(key=lambda x: x.size)
+
+        for i in range(len(final_groups)):
+            final_groups[i].number = i+1
+
+        self.split_box.delete('1.0',tk.END)
+        for group in final_groups:
+            self.split_box.insert(tk.END, str(group))
+            self.split_box.insert(tk.END, "\n")
+        
+        
+        print(final_groups)
+        
     def split_switch(self, val, entries):
         for entry in entries:
             if entry[1] != val:
