@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import askopenfilename, asksaveasfile
 import csv
 import operator
 import Student as st
@@ -10,6 +10,9 @@ class MainApp:
     def __init__(self, root, radio_var):
         self.students = []
         self.optv = radio_var
+        root.title("autosplit")
+        root.iconbitmap(default="favicon.ico")
+        root.resizable(False, False)
         tk.Label(root, text='File Path',padx=15,pady=5).grid(row=0,sticky=tk.W)
         self.v = tk.StringVar()
         entry = tk.Entry(root, textvariable=self.v,width=54).grid(row=1,column=0,padx=40,sticky="W")
@@ -54,10 +57,10 @@ class MainApp:
         entries.append((group_size,1))
         group_size.grid(row=4,column=1,sticky="W")
         tk.Label(root, text = "Splits",padx=20,pady=5).grid(row=5,sticky="W")
-        self.split_box = tk.Text(root, height=20, width=40)
+        self.split_box = tk.Text(root, height=20, width=40,state="disabled")
         self.split_box.grid(row=6,column=0,sticky="W",padx=40,pady=5)
         tk.Button(root, text='Perform Splits',command=self.split).grid(row=7,column=0,sticky="W",padx=38,pady=(5,10))
-        tk.Button(root, text='Save Splits').grid(row=7,column=1,sticky="N")
+        tk.Button(root, text='Save Splits',command=self.save_file).grid(row=7,column=1,sticky="N")
         tk.Button(root, text='Send to Slack').grid(row=7,column=2,sticky="NW")
 
     def import_csv_data(self):
@@ -75,24 +78,40 @@ class MainApp:
                 except:
                     continue
                 student = st.Student(row[0],row[1],row[2],row[3],row[4])
+                self.split_box.configure(state="normal")
                 self.students.append(student)
                 self.split_box.insert(tk.END,student)
                 self.split_box.insert(tk.END,"\n")
+                self.split_box.configure(state="disabled")
+
+    def save_file(self):
+        filename = asksaveasfile(mode='w', defaultextension='.txt')
+        filename = filename.name
+        if filename is None:
+            return
+        with open(filename, mode='w') as output:
+            data = self.split_box.get("1.0",tk.END)
+            output.write(data)
+        print(filename)
                 
     def split(self):
 
         try:
             isinstance(self.minv.get(),int)
         except:
+            self.split_box.configure(state="normal")
             self.split_box.delete('1.0',tk.END)
             self.split_box.insert(tk.END,'Error: please enter an integer value')
+            self.split_box.configure(state="disabled")
             return
 
             
         # This all is for "people per group" option
         if self.minv.get() >= self.maxv.get():
+            self.split_box.configure(state="normal")
             self.split_box.delete('1.0',tk.END)
             self.split_box.insert(tk.END,'Error: minimum must be less than maximum')
+            self.split_box.configure(state="disabled")
             return
 
 
@@ -173,10 +192,12 @@ class MainApp:
         for i in range(len(final_groups)):
             final_groups[i].number = i+1
 
+        self.split_box.configure(state="normal")
         self.split_box.delete('1.0',tk.END)
         for group in final_groups:
             self.split_box.insert(tk.END, str(group))
             self.split_box.insert(tk.END, "\n")
+        self.split_box.configure(state="disabled")
         
         
         print(final_groups)
