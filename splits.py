@@ -72,17 +72,18 @@ class MainApp:
         self.v.set(csv_file_path)
         with open(csv_file_path, 'r') as csvfile:
             reader = csv.reader(csvfile)
+            self.split_box.configure(state="normal")
+            self.split_box.delete('1.0',tk.END)
             for row in reader:
                 try:
                     int(row[3])
                 except:
                     continue
                 student = st.Student(row[0],row[1],row[2],row[3],row[4])
-                self.split_box.configure(state="normal")
                 self.students.append(student)
                 self.split_box.insert(tk.END,student)
                 self.split_box.insert(tk.END,"\n")
-                self.split_box.configure(state="disabled")
+            self.split_box.configure(state="disabled")
 
     def save_file(self):
         filename = asksaveasfile(mode='w', defaultextension='.txt')
@@ -93,17 +94,17 @@ class MainApp:
             data = self.split_box.get("1.0",tk.END)
             output.write(data)
         print(filename)
-                
-    def split(self):
 
+    def error_check_input(self):
         try:
             isinstance(self.minv.get(),int)
+            isinstance(self.maxv.get(),int)
         except:
             self.split_box.configure(state="normal")
             self.split_box.delete('1.0',tk.END)
             self.split_box.insert(tk.END,'Error: please enter an integer value')
             self.split_box.configure(state="disabled")
-            return
+            return 1
 
             
         # This all is for "people per group" option
@@ -112,11 +113,11 @@ class MainApp:
             self.split_box.delete('1.0',tk.END)
             self.split_box.insert(tk.END,'Error: minimum must be less than maximum')
             self.split_box.configure(state="disabled")
-            return
+            return 1
+        return 0
 
-
-        buddies = []
-        ## Pair up any people from the same hometown first ##
+    def combine_hometowns(self,pairs_list):
+        
         for student1 in self.students:
             partner = gr.Group()
             partner.add_student(student1)
@@ -131,26 +132,18 @@ class MainApp:
                     if student2 in self.students:
                         self.students.remove(student2)
             if partner != copy:
-                buddies.append(partner)
-        #print(str(buddies))
+                pairs_list.append(partner)
+        #print(str(first_pairs))
 
-        self.students.sort(key=lambda x: (x.local, x.area))
-        #print(self.students)
-        # If the number of out of states is odd, make a group of 3
-        num_oos = sum(x.local == False for x in self.students)
-        #print(self.students)
-
-        # If there are an odd number of out of state students
-        # (but more than one), keep them in a group of 3
-        if num_oos % 2 == 1 and num_oos > 1:
-            #print("Made it to edge case")
+    def remove_odd_group(self,pairs_list):
+            print("tested!")
             partners = gr.Group()
             partners.add_students([self.students[0], self.students[1], self.students[2]])
             for i in range(3):
                 self.students.pop(0)
-            buddies.append(partners)
-            #print(buddies)
+            pairs_list.append(partners)
 
+    def partner_students(self,pairs_list):
         while self.students:
             partners = gr.Group()
             if len(self.students) == 3:
@@ -160,23 +153,17 @@ class MainApp:
             else:
                 partners.add_student(self.students.pop(0))
                 partners.add_student(self.students.pop(0))
-            buddies.append(partners)
+            pairs_list.append(partners)
 
-        buddies.sort(key=lambda x: (x.local, x.area), reverse=True)
-        # with list sorted in the order it is in
-        # pop first element, add/pop elements until group size is > minimum
-        # then finalize group, continue until running out
-        # if a group is leftover, combine with smallest group
-        final_groups = []
+    def finalize_groups_by_size(self,first_pairs,final_groups):
+        # For any leftover group that is too small
         leftover = None
-
-        while buddies:
-            group = buddies.pop(0)
+        while first_pairs:
+            group = first_pairs.pop(0)
             while group.size < self.minv.get():
-                if buddies:
-                    new_group = buddies.pop(0)
+                if first_pairs:
+                    new_group = first_pairs.pop(0)
                     group.combine_group(new_group)
-                # still need to do something with leftovers here
                 else:
                     leftover = group
                     break
@@ -192,15 +179,59 @@ class MainApp:
         for i in range(len(final_groups)):
             final_groups[i].number = i+1
 
+    def groups_to_text(self, final_groups):
         self.split_box.configure(state="normal")
         self.split_box.delete('1.0',tk.END)
         for group in final_groups:
             self.split_box.insert(tk.END, str(group))
             self.split_box.insert(tk.END, "\n")
         self.split_box.configure(state="disabled")
+    
+    def split(self):
+
+        if self.error_check_input():
+            return
+
+        # First pairs contains initial pairs of people who are deemed
+        # "similar", that is, either both out of state or same interest area
+        # Some people might end up alone in their interest area, but otherwise,
+        # should be sound
+        first_pairs = []
+
+        # Students from the same hometown must stay together.
+        self.combine_hometowns(first_pairs)
+        print(first_pairs)
+
+        # Organize by whether the student is local or not, followed by their
+        # interest area
+        self.students.sort(key=lambda x: (x.local, x.area))
+        print(self.students)
         
-        
-        print(final_groups)
+        # If the number of out of states is odd, make a group of 3
+        # so no one is left out
+        num_out_of_state = sum(x.local == False for x in self.students)
+
+        # If there are an odd number of out of state students
+        # (but more than one), keep them in a group of 3
+        if num_out_of_state % 2 == 1 and num_out_of_state > 1:
+            self.remove_odd_group(first_pairs)
+
+        # With remaining students, partner them up with similar student
+        self.partner_students(first_pairs)
+
+        # Sort initial pairs by locality and interest area
+        first_pairs.sort(key=lambda x: (x.local, x.area), reverse=True)
+        # with list sorted in the order it is in
+        # pop first element, add/pop elements until group size is > minimum
+        # then finalize group, continue until running out
+        # if a group is leftover, combine with smallest group
+
+        # List for the final groups
+        final_groups = []
+        self.finalize_groups_by_size(first_pairs,final_groups)
+
+        # Print groups in the console
+        self.groups_to_text(final_groups)
         
     def split_switch(self, val, entries):
         for entry in entries:
