@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter.filedialog import askopenfilename, asksaveasfile
 import csv
 import operator
+import copy
 import Student as st
 import Group as gr
 
@@ -155,12 +156,12 @@ class MainApp:
                 partners.add_student(self.students.pop(0))
             pairs_list.append(partners)
 
-    def finalize_groups_by_size(self,first_pairs,final_groups):
+    def finalize_groups_by_size(self,first_pairs,final_groups,size):
         # For any leftover group that is too small
         leftover = None
         while first_pairs:
             group = first_pairs.pop(0)
-            while group.size < self.minv.get():
+            while group.size < size:
                 if first_pairs:
                     new_group = first_pairs.pop(0)
                     group.combine_group(new_group)
@@ -170,14 +171,31 @@ class MainApp:
             if leftover is None:        
                 final_groups.append(group)
         final_groups.sort(key=lambda x: x.size)
-        if (leftover is not None) and leftover.size < (.75 * self.minv.get()):
+        if (leftover is not None) and leftover.size < (.75 * size):
             final_groups[0].combine_group(leftover)
-        elif (leftover is not None) and leftover.size >= (.75 * self.minv.get()):
+        elif (leftover is not None) and leftover.size >= (.75 * size):
             final_groups.append(leftover)
         final_groups.sort(key=lambda x: x.size)
 
         for i in range(len(final_groups)):
             final_groups[i].number = i+1
+
+    def finalize_groups_by_number(self,first_pairs,final_groups,size):
+            counter = 1
+            while True and counter < 100:
+                print('looping' + str(counter))
+                # Have to delete all elements in list instead of creating new
+                # object, or else the re
+                final_groups = []
+                first_pairs_clone = copy.deepcopy(first_pairs)
+                self.finalize_groups_by_size(first_pairs_clone,final_groups,counter)
+                print(len(final_groups))
+                #print('\n')
+                if len(final_groups) <= self.groupnumv.get():
+                    #print(final_groups)
+                    return final_groups
+                   #break
+                counter += 1
 
     def groups_to_text(self, final_groups):
         self.split_box.configure(state="normal")
@@ -186,6 +204,7 @@ class MainApp:
             self.split_box.insert(tk.END, str(group))
             self.split_box.insert(tk.END, "\n")
         self.split_box.configure(state="disabled")
+
     
     def split(self):
 
@@ -205,7 +224,7 @@ class MainApp:
         # Organize by whether the student is local or not, followed by their
         # interest area
         self.students.sort(key=lambda x: (x.local, x.area))
-        print(self.students)
+        #print(self.students)
         
         # If the number of out of states is odd, make a group of 3
         # so no one is left out
@@ -225,11 +244,29 @@ class MainApp:
         # pop first element, add/pop elements until group size is > minimum
         # then finalize group, continue until running out
         # if a group is leftover, combine with smallest group
-
-        # List for the final groups
+        
+        # Using explicit values for r
         final_groups = []
-        self.finalize_groups_by_size(first_pairs,final_groups)
-
+        if self.optv.get() == 0:
+            self.finalize_groups_by_size(first_pairs,final_groups,self.minv.get())
+        elif self.optv.get() == 1:
+            final_groups = self.finalize_groups_by_number(first_pairs,final_groups,self.groupnumv.get())
+            print(final_groups)
+            #print("Second option selected")
+##            counter = 1
+##            while True and counter < 100:
+##                print('looping' + str(counter))
+##                final_groups = []
+##                first_pairs_clone = copy.deepcopy(first_pairs)
+##                self.finalize_groups_by_size(first_pairs_clone,final_groups,counter)
+##                print(len(final_groups))
+##                #print('\n')
+##                if len(final_groups) <= self.groupnumv.get():
+##                    print(final_groups)
+##                    break
+##                counter += 1
+        else:
+            raise ValueError("No proper type selected for split method")
         # Print groups in the console
         self.groups_to_text(final_groups)
         
