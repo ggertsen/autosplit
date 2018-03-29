@@ -3,6 +3,7 @@ from tkinter.filedialog import askopenfilename, asksaveasfile
 import csv
 import operator
 import copy
+import platform
 import Student as st
 import Group as gr
 
@@ -12,7 +13,8 @@ class MainApp:
         self.students = []
         self.optv = radio_var
         root.title("autosplit")
-        root.iconbitmap(default="favicon.ico")
+        if platform.system() == 'Windows':
+            root.iconbitmap(default="favicon.ico")
         root.resizable(False, False)
         tk.Label(root, text='File Path',padx=15,pady=5).grid(row=0,sticky=tk.W)
         self.v = tk.StringVar()
