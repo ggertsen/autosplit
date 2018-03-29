@@ -4,8 +4,8 @@ import csv
 import operator
 import copy
 import platform
-import Student as st
-import Group as gr
+import student as st
+import group as gr
 
 class MainApp:
 
